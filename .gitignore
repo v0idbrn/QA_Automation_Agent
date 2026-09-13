@@ -1,0 +1,38 @@
+# Python environment
+.venv/
+venv/
+env/
+
+# Byte-code and caches
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Local runtime traces and screenshots
+*.log
+trace.zip
+*.png
+*.jpg
+*.jpeg
+screenshot*.png
+evidence/
+temp/
+
+# Rendered reports (keep templates if present)
+reports/*.html
+reports/*.pdf
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
