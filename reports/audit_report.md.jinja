@@ -1,0 +1,35 @@
+# QA Automation Audit Report
+
+Target: {{ report.target }}
+Generated: {{ report.finished_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+Window: {{ report.started_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} → {{ report.finished_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+
+## Executive Summary
+
+| Metric | Count |
+| --- | --- |
+| Total findings | {{ summary.total }} |
+| Broken links / HTTP failures | {{ summary.broken }} |
+| Console errors | {{ summary.console_errors }} |
+| High-severity issues | {{ summary.high_severity }} |
+
+## Findings
+
+{% for finding in findings %}
+### {{ finding.source }} — {{ finding.kind }}
+
+- **URL:** {{ finding.url }}
+- **Detail:** {{ finding.detail }}
+- **Severity:** {{ finding.severity }}
+{% if finding.screenshot %}
+- **Screenshot:** {{ finding.screenshot }}
+{% endif %}
+{% if finding.html_snapshot %}
+- **HTML snapshot:** available
+{% endif %}
+{% endfor %}
+
+## Notes
+
+- Findings are local-first and must not be committed unless explicitly reviewed.
+- Any screenshot, log, or trace referenced here stays outside version control by default.

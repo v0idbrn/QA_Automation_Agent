@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>QA Audit Report — {{ report.target }}</title>
+    <style>
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; color: #111; }
+        h1 { border-bottom: 1px solid #ccc; padding-bottom: 0.25rem; }
+        table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+        th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+        th { background: #f5f5f5; }
+        .finding { border-left: 4px solid #ccc; padding: 0.5rem 1rem; margin: 1rem 0; background: #fafafa; }
+        .finding.high { border-left-color: #b00020; background: #fff5f5; }
+        .finding.medium { border-left-color: #e08a00; background: #fffaf0; }
+        .finding.low { border-left-color: #6b7280; }
+    </style>
+</head>
+<body>
+    <h1>QA Automation Audit Report</h1>
+    <p><strong>Target:</strong> {{ report.target }}</p>
+    <p><strong>Generated:</strong> {{ report.finished_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>
+    <p><strong>Window:</strong> {{ report.started_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} → {{ report.finished_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>
+
+    <h2>Executive Summary</h2>
+    <table>
+        <tr><th>Metric</th><th>Count</th></tr>
+        <tr><td>Total findings</td><td>{{ summary.total }}</td></tr>
+        <tr><td>Broken links / HTTP failures</td><td>{{ summary.broken }}</td></tr>
+        <tr><td>Console errors</td><td>{{ summary.console_errors }}</td></tr>
+        <tr><td>High-severity issues</td><td>{{ summary.high_severity }}</td></tr>
+    </table>
+
+    <h2>Findings</h2>
+    {% for finding in findings %}
+    <div class="finding {{ finding.severity }}">
+        <h3>{{ finding.source }} — {{ finding.kind }}</h3>
+        <p><strong>URL:</strong> {{ finding.url }}</p>
+        <p><strong>Detail:</strong> {{ finding.detail }}</p>
+        <p><strong>Severity:</strong> {{ finding.severity }}</p>
+        {% if finding.screenshot %}<p><strong>Screenshot:</strong> {{ finding.screenshot }}</p>{% endif %}
+        {% if finding.steps_to_reproduce %}<p><strong>Steps to Reproduce:</strong> {{ finding.steps_to_reproduce }}</p>{% endif %}
+        {% if finding.expected %}<p><strong>Expected:</strong> {{ finding.expected }}</p>{% endif %}
+        {% if finding.actual %}<p><strong>Actual:</strong> {{ finding.actual }}</p>{% endif %}
+    </div>
+    {% endfor %}
+
+    <h2>Notes</h2>
+    <ul>
+        <li>Findings are local-first and must not be committed unless explicitly reviewed.</li>
+        <li>Any screenshot, log, or trace referenced here stays outside version control by default.</li>
+    </ul>
+</body>
+</html>
