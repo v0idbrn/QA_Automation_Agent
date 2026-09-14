@@ -1,16 +1,21 @@
 # Copyright (c) 2026 Gaetano. All rights reserved.
 # Licensed under MIT License. See LICENSE in the project root.
 """
-Evidence manager and run manifest for reproducible QA runs.
+Evidence manager + Run manifest.
 
-Temporary evidence stays in a dedicated directory and is kept separate from
-final report evidence until a run is explicitly finalized.
+Extension points over the previous implementation:
+  * Every EvidenceEntry now declares run_id, test_id, finding_id.
+  * Atomic writes used for run_manifest.json and run_evidence.json.
+  * Central redaction before any file write.
+  * Promoted evidence list is returned from finalize() with paths.
 """
 
 from __future__ import annotations
 
 import hashlib
-import json
+import json as _json
+import os
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -18,6 +23,8 @@ from pathlib import Path
 from typing import Any
 
 from core.models import Finding
+from core.redaction import scrub
+from core.atomic_write import atomic_write, atomic_write_json
 
 
 @dataclass
@@ -37,16 +44,31 @@ class RunManifest:
     environment: dict[str, Any] = field(default_factory=dict)
     version: str = "1.0.0"
     notes: list[str] = field(default_factory=list)
+    # ---- Enterprise extension ----
+    agent_version: str = "1.0.0"
+    python_version: str = ""
+    os_name: str = ""
+    browser: str = ""
+    project_fingerprint: str = ""
+    scope: dict[str, Any] = field(default_factory=dict)
+    budget: dict[str, Any] = field(default_factory=dict)
+    tests_planned: int = 0
+    tests_executed: int = 0
+    findings: dict[str, Any] = field(default_factory=dict)
+    artifacts: list[str] = field(default_factory=list)
+    quality_gate: dict[str, Any] = field(default_factory=dict)
+    escalations: list[dict[str, Any]] = field(default_factory=list)
+    retries: int = 0
+    flaky_count: int = 0
 
-    def to_safe_dict(self, redaction: "RedactionPolicy | None" = None) -> dict[str, Any]:
-        from core.security import redact_sensitive_data
-
+    def to_safe_dict(self, redaction: Any | None = None) -> dict[str, Any]:
         data: dict[str, Any] = {
             "run_id": self.run_id,
             "started_at": self.started_at.isoformat(),
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
             "target": self.target,
-            "configuration": redact_sensitive_data(self.configuration) if redaction else self.configuration,
+            "configuration": scrub(self.configuration),
+            "environment": scrub(self.environment),
             "test_count": self.test_count,
             "passed": self.passed,
             "failed": self.failed,
@@ -54,19 +76,28 @@ class RunManifest:
             "blocked": self.blocked,
             "errors": self.errors,
             "limits": self.limits,
-            "environment": redact_sensitive_data(self.environment) if redaction else self.environment,
             "version": self.version,
-            "notes": self.notes,
+            "notes": list(self.notes),
+            "agent_version": self.agent_version,
+            "python_version": self.python_version,
+            "os": self.os_name,
+            "browser": self.browser,
+            "project_fingerprint": self.project_fingerprint,
+            "scope": self.scope,
+            "budget": self.budget,
+            "tests_planned": self.tests_planned,
+            "tests_executed": self.tests_executed,
+            "findings": scrub(self.findings),
+            "artifacts": list(self.artifacts),
+            "quality_gate": scrub(self.quality_gate),
+            "escalations": scrub(self.escalations),
+            "retries": self.retries,
+            "flaky_count": self.flaky_count,
         }
-        if redaction:
-            data["configuration"] = redaction.redact(json.dumps(data["configuration"], default=str))
-            data["environment"] = redaction.redact(json.dumps(data["environment"], default=str))
         return data
 
-    def save(self, path: Path) -> Path:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self.to_safe_dict(), indent=2, default=str), encoding="utf-8")
-        return path
+    def save(self, path: str | Path) -> Path:
+        return atomic_write_json(path, self.to_safe_dict())
 
 
 @dataclass
@@ -76,15 +107,37 @@ class EvidenceEntry:
     description: str
     sensitive: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
+    # ---- Traceability extension ----
+    run_id: str | None = None
+    test_id: str | None = None
+    finding_id: str | None = None
 
 
 class EvidenceManager:
-    def __init__(self, temporary_dir: Path, final_dir: Path, manifest: RunManifest | None = None):
-        self.temporary_dir = temporary_dir.resolve()
-        self.final_dir = final_dir.resolve()
+    def __init__(
+        self,
+        temporary_dir: Path,
+        final_dir: Path,
+        manifest: RunManifest | None = None,
+        *,
+        run_id: str | None = None,
+    ) -> None:
+        self.temporary_dir = Path(temporary_dir).resolve()
+        self.final_dir = Path(final_dir).resolve()
         self.manifest = manifest
+        self._run_id = run_id
         self._entries: list[EvidenceEntry] = []
 
+    # ------------------------------------------------------------------
+    @property
+    def run_id(self) -> str:
+        if self._run_id:
+            return self._run_id
+        if self.manifest:
+            return self.manifest.run_id
+        return ""
+
+    # ------------------------------------------------------------------
     def temporary_directory(self) -> Path:
         self.temporary_dir.mkdir(parents=True, exist_ok=True)
         return self.temporary_dir
@@ -93,11 +146,40 @@ class EvidenceManager:
         self.final_dir.mkdir(parents=True, exist_ok=True)
         return self.final_dir
 
-    def store_temporary(self, kind: str, content: bytes, description: str, extension: str = "png") -> str:
-        name = f"{uuid.uuid4().hex}.{extension}"
-        path = self.temporary_dir / name
+    # ------------------------------------------------------------------
+    def store_temporary(
+        self,
+        kind: str,
+        content: bytes,
+        description: str,
+        *,
+        extension: str = "png",
+        test_id: str | None = None,
+        finding_id: str | None = None,
+        sensitive: bool = False,
+    ) -> str:
+        if sensitive:
+            # Binary redaction: for screenshots we can't scrub pixels; we just
+            # mark them sensitive. For HTML/DOM snapshots, scrub text content.
+            if kind in {"dom_snapshot", "html", "log"} and isinstance(content, (bytes, bytearray)):
+                try:
+                    decoded = content.decode("utf-8", errors="ignore")
+                    cleaned = scrub(decoded)
+                    content = cleaned.encode("utf-8")
+                except Exception:
+                    pass
+        name = f"{uuid.uuid4().hex}.{extension.lstrip('.')}"
+        path = self.temporary_directory() / name
         path.write_bytes(content)
-        entry = EvidenceEntry(kind=kind, path=str(path), description=description)
+        entry = EvidenceEntry(
+            kind=kind,
+            path=str(path),
+            description=description,
+            sensitive=sensitive,
+            run_id=self.run_id or None,
+            test_id=test_id,
+            finding_id=finding_id,
+        )
         self._entries.append(entry)
         return str(path)
 
@@ -107,54 +189,76 @@ class EvidenceManager:
         dest = dest_dir / dest_name
         src = Path(entry.path)
         if src.exists():
-            src.replace(dest)
+            try:
+                os.replace(src, dest)
+            except OSError:
+                dest.write_bytes(src.read_bytes())
+                try:
+                    src.unlink()
+                except OSError:
+                    pass
         entry.path = str(dest)
-        entry.metadata["promoted"] = datetime.now(timezone.utc).isoformat()
+        entry.metadata["promoted_at"] = datetime.now(timezone.utc).isoformat()
         return str(dest)
 
     def list_entries(self) -> list[EvidenceEntry]:
         return list(self._entries)
 
     def snapshot_evidence_summary(self) -> dict[str, Any]:
-        summary: dict[str, Any] = {
-            "temporary": [],
-            "final": [],
-        }
+        summary: dict[str, Any] = {"temporary": [], "final": []}
         for entry in self._entries:
-            summary["temporary" if Path(entry.path).exists() and str(self.temporary_dir) in entry.path else "final"].append(
+            target = "final"
+            try:
+                exists = Path(entry.path).exists()
+            except OSError:
+                exists = False
+            if exists and str(self.temporary_dir) in entry.path:
+                target = "temporary"
+            summary[target].append(
                 {
                     "kind": entry.kind,
                     "path": entry.path,
                     "description": entry.description,
                     "sensitive": entry.sensitive,
+                    "run_id": entry.run_id,
+                    "test_id": entry.test_id,
+                    "finding_id": entry.finding_id,
                 }
             )
         return summary
 
+    # ------------------------------------------------------------------
     def finalize(
         self,
         findings: list[Finding],
         output_dir: Path,
-        redaction: "RedactionPolicy | None" = None,
+        *,
+        redaction: Any | None = None,
     ) -> dict[str, Any]:
-        from core.security import redact_sensitive_data
-
+        output_dir = Path(output_dir).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
         manifest_path = output_dir / "run_manifest.json"
         if self.manifest:
             self.manifest.finished_at = datetime.now(timezone.utc)
             self.manifest.save(manifest_path)
 
-        evidence_summary = self.snapshot_evidence_summary()
-        if redaction:
-            evidence_summary = redaction.redact(evidence_summary)
+        evidence_summary = scrub(self.snapshot_evidence_summary())
+        safe_findings = [scrub(f.model_dump_safe() if hasattr(f, "model_dump_safe") else _dict_of_finding(f)) for f in findings]
 
         report_evidence: dict[str, Any] = {
-            "run_id": self.manifest.run_id if self.manifest else "",
+            "run_id": self.manifest.run_id if self.manifest else self.run_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "evidence_summary": evidence_summary,
-            "findings": [f.model_dump_safe(redaction) for f in findings],
+            "findings": safe_findings,
         }
         report_path = output_dir / "run_evidence.json"
-        report_path.write_text(json.dumps(report_evidence, indent=2, default=str), encoding="utf-8")
+        atomic_write_json(report_path, report_evidence)
         return report_evidence
+
+
+def _dict_of_finding(f: Finding) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for name in ("finding_id", "category", "severity", "confidence", "title", "description", "location", "evidence", "reproduction", "expected", "actual", "source_skill", "source", "status", "recommendation", "timestamp"):
+        if hasattr(f, name):
+            out[name] = getattr(f, name)
+    return out

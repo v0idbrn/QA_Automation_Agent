@@ -2,7 +2,13 @@ import pytest
 
 from core.models import Finding, FindingCategory, Severity
 from core.scope import Budget, Scope, ScopeViolationError
-from core.security import redact_dict_sensitive_keys, redact_headers, redact_sensitive_data, sanitize_log_line
+from core.security import (
+    RedactionPolicy,
+    redact_dict_sensitive_keys,
+    redact_headers,
+    redact_sensitive_data,
+    sanitize_log_line,
+)
 
 
 class TestScope:

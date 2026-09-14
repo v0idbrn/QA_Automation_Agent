@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Demo Corp — API sandbox</title>
+</head>
+<body>
+  <h1>API sandbox</h1>
+  <p>Buttons below call intentionally fragile endpoints. Serve this folder with
+  <code>python -m http.server 8000</code> and click to generate API findings.</p>
+
+  <button onclick="call('api/status?code=500')">Trigger 500</button>
+  <button onclick="call('api/status?code=503')">Trigger 503</button>
+  <button onclick="call('api/status?code=404')">Trigger 404</button>
+  <button onclick="call('api/slow')">Slow response (3s)</button>
+  <button onclick="call('api/malformed')">Malformed JSON</button>
+
+  <pre id="out"></pre>
+
+  <script>
+    function call(path) {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", path);
+      xhr.onload = function () {
+        document.getElementById("out").textContent =
+          path + " -> " + xhr.status + " " + xhr.responseText.slice(0, 80);
+      };
+      xhr.onerror = function () {
+        document.getElementById("out").textContent = path + " -> network error";
+      };
+      xhr.send();
+    }
+    // deliberate console error on load
+    console.error("demo: api_page deliberate console error");
+  </script>
+
+  <nav><a href="index.html">Home</a></nav>
+</body>
+</html>

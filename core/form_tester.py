@@ -46,6 +46,8 @@ class FormFinding:
 
 
 class TestFormInjector:
+    __test__ = False
+
     def __init__(self) -> None:
         self.payloads_tested = 0
 

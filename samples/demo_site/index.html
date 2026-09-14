@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Demo Corp — Home</title>
+</head>
+<body>
+  <h1>Demo Corp</h1>
+  <h3>News</h3><!-- deliberate heading skip: h1 -> h3 (no h2) -->
+
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="products.html">Products</a>
+    <a href="products.html#section-1">Products (same page target)</a>
+    <a href="missing-page.html">Archived catalog</a><!-- deliberate broken link -->
+    <a href="admin.html">Admin</a><!-- admin-style path for scope demos -->
+    <a href="https://external.example.org/page">Partner site</a><!-- external: denied by default scope -->
+    <a href="deep/loop.html">Deep loop entry</a>
+  </nav>
+
+  <img src="hero-banner.jpg"><!-- deliberate a11y finding: missing alt -->
+
+  <!-- Deliberate duplicate id="main-content" with products.html -->
+  <div id="main-content">
+    <p>Welcome to Demo Corp. This site intentionally contains QA findings for
+    validating the agent end-to-end. It is a static site: serve it locally with
+    <code>python -m http.server 8000</code> from this folder.</p>
+  </div>
+
+  <div id="main-content"><!-- deliberate duplicate ID -->&nbsp;</div>
+
+  <footer>
+    <a href="index.html">Back to top</a>
+    <a href="api_page.html">API sandbox</a>
+  </footer>
+</body>
+</html>

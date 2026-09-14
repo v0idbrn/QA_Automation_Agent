@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from core.discovery import DiscoveredProject, _has_e2e_tests, _infer_python_routes, discover_project

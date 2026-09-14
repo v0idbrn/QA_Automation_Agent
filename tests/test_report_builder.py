@@ -3,10 +3,11 @@ from pathlib import Path
 
 import pytest
 
+from core.models import Finding, FindingCategory, Severity
 from core.report_builder import (
-    AuditFinding,
     ReportBuilder,
     render_audit_report,
+    render_audit_report_json,
     render_jira_export,
 )
 
@@ -15,12 +16,13 @@ class TestReportBuilderMarkdown:
     def test_build_returns_string_with_target(self):
         builder = ReportBuilder(template_dir=Path(__file__).resolve().parent.parent / "reports")
         findings = [
-            AuditFinding(
-                source="crawler",
-                kind="broken",
-                url="https://example.test/404",
-                detail="http 404",
-                severity="medium",
+            Finding(
+                id="f1",
+                category=FindingCategory.CRAWL,
+                severity=Severity.MEDIUM,
+                title="broken link",
+                description="http 404",
+                location="https://example.test/404",
             )
         ]
         text = builder.build(target="example.test", findings=findings)
@@ -32,8 +34,8 @@ class TestReportBuilderMarkdown:
     def test_summary_counts_high_severity(self):
         builder = ReportBuilder(template_dir=Path(__file__).resolve().parent.parent / "reports")
         findings = [
-            AuditFinding(source="fuzzer", kind="failure", url="/", detail="xss-ish", severity="high"),
-            AuditFinding(source="fuzzer", kind="failure", url="/", detail="long text", severity="low"),
+            Finding(id="f2", category=FindingCategory.FORM, severity=Severity.HIGH, title="xss-ish", description="xss-ish"),
+            Finding(id="f3", category=FindingCategory.FORM, severity=Severity.LOW, title="long text", description="long text"),
         ]
         text = builder.build(target="example.test", findings=findings)
         assert "high_severity" in text.lower() or "1" in text
@@ -42,7 +44,7 @@ class TestReportBuilderMarkdown:
 class TestRenderAuditReportFile:
     def test_render_audit_report_writes_file(self, tmp_path):
         findings = [
-            AuditFinding(source="crawler", kind="broken", url="/", detail="broken link", severity="medium")
+            Finding(id="f1", category=FindingCategory.CRAWL, severity=Severity.MEDIUM, title="broken link", description="broken link", location="/"),
         ]
         output = tmp_path / "reports" / "audit_report.md"
         path = render_audit_report("example.test", findings, output)
@@ -54,16 +56,17 @@ class TestRenderAuditReportFile:
 class TestJiraExport:
     def test_jira_export_writes_file(self, tmp_path):
         findings = [
-            AuditFinding(
-                source="api",
-                kind="500",
-                url="https://example.test/api",
-                detail="500 Internal Server Error",
-                severity="high",
-                steps_to_reproduce="1. Open page\n2. Trigger request",
+            Finding(
+                id="f4",
+                category=FindingCategory.API,
+                severity=Severity.HIGH,
+                title="500 Internal Server Error",
+                description="500 Internal Server Error",
+                location="https://example.test/api",
                 expected="200 OK",
                 actual="500",
-                screenshot="reports/screenshot.png",
+                reproduction="1. Open page\n2. Trigger request",
+                evidence="reports/screenshot.png",
             )
         ]
         output = tmp_path / "jira_export.md"
@@ -75,7 +78,7 @@ class TestJiraExport:
         assert "Steps to Reproduce:" in content
         assert "Expected Behavior:" in content
         assert "Actual Behavior:" in content
-        assert "Screenshot:" in content
+        assert "Evidence:" in content
 
     def test_jira_export_empty_findings(self, tmp_path):
         output = tmp_path / "jira_export.md"

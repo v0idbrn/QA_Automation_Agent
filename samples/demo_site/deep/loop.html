@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Deep loop page</title></head>
+<body>
+  <h1>Loop stress page</h1>
+  <!-- Fragment and self references: the hardened crawler must not loop on these -->
+  <a href="loop.html#fragment-1">self fragment</a>
+  <a href="loop.html">self plain</a>
+  <a href="#top">pure fragment</a>
+  <a href="../index.html">back to home</a>
+  <a href="loop.html?iteration=2">self with query</a>
+
+  <script>console.error("demo: loop.html deliberate console error");</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Demo Corp — Products</title>
+</head>
+<body>
+  <h1>Products</h1>
+  <h4>Details</h4><!-- deliberate heading skip: h1 -> h4 -->
+
+  <div id="section-1">Section 1</div>
+  <div id="main-content"><!-- deliberate duplicate id with index.html -->catalog</div>
+
+  <form action="/api/checkout" method="post">
+    <label for="qty">Quantity</label>
+    <input type="number" id="qty" name="qty" min="1" max="10" required>
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required>
+    <!-- deliberate a11y finding: unlabeled input -->
+    <input type="text" name="promo" placeholder="Promo code">
+    <button type="submit">Checkout</button>
+  </form>
+
+  <!-- Deliberate console error for the crawler to capture -->
+  <script>console.error("demo: deliberate console error on products page");</script>
+
+  <nav><a href="index.html">Home</a></nav>
+</body>
+</html>

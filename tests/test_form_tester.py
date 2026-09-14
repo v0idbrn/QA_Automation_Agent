@@ -4,7 +4,7 @@ from core.form_tester import (
     BoundaryKind,
     FormFinding,
     FormInput,
-    TestFormInjector,
+    TestFormInjector as FormTester,
     build_boundary_values,
     build_synthetic_payloads,
 )
@@ -51,7 +51,7 @@ class TestSyntheticPayloadGeneration:
 
 class TestFormInjector:
     def test_inject_into_keeps_html_snapshots(self):
-        injector = TestFormInjector()
+        injector = FormTester()
         finding = injector.inject_into(
             inputs=[
                 FormInput(name="email", value_type="text", placeholder="email"),
@@ -66,7 +66,7 @@ class TestFormInjector:
         assert finding.payloads_tested > 0
 
     def test_summary_detail_includes_counts(self):
-        injector = TestFormInjector()
+        injector = FormTester()
         finding = injector.inject_into(
             inputs=[FormInput(name="q", value_type="text")],
             payloads=["a", "b"],

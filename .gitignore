@@ -26,10 +26,19 @@ trace.zip
 screenshot*.png
 evidence/
 temp/
+pragma_*.txt
 
 # Rendered reports (keep templates if present)
 reports/*.html
 reports/*.pdf
+reports/*.json
+reports/*/
+reports/tmp/
+reports/final/
+reports/audit_report.md
+reports/jira_export.md
+reports/run_manifest.json
+reports/run_evidence.json
 
 # Editor / OS noise
 .DS_Store

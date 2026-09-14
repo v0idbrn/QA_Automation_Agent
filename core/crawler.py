@@ -12,6 +12,7 @@ Provides:
 
 from __future__ import annotations
 
+import inspect
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -84,9 +85,12 @@ class Crawler:
                 links.append(resolved)
         return links
 
-    def _snapshot_html(self, page: Page) -> str:
+    async def _snapshot_html(self, page: Page) -> str:
         try:
-            return page.content()
+            html = page.content()
+            if inspect.isawaitable(html):
+                html = await html
+            return html
         except Exception as exc:  # noqa: BLE001
             return f"<!-- snapshot failed: {exc} -->"
 
@@ -164,7 +168,7 @@ async def crawl_page(
                 url=url,
                 parent="",
                 detail=f"http {status}",
-                html_snapshot=crawler._snapshot_html(page),
+                html_snapshot=await crawler._snapshot_html(page),
                 ttfb_ms=ttfb_ms,
                 load_time_ms=load_time_ms,
             )
@@ -185,6 +189,8 @@ async def crawl_page(
     )
 
     html = crawler._snapshot_html(page)
+    if inspect.isawaitable(html):
+        html = await html
     soup = BeautifulSoup(html, "html.parser")
     links = crawler.extract_links(soup, url)
 

@@ -1,7 +1,11 @@
+# Core runtime
 pydantic>=2.0.0
 playwright>=1.40.0
+jinja2>=3.1.0
+
+# HTML parsing (crawler link extraction + discovery form detection)
+beautifulsoup4>=4.12.0
+
+# Test runner for the agent's own suite
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
-selectolax>=0.3.0
-jinja2>=3.1.0
-httpx>=0.27.0

@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import json
+
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from core.models import Finding, FindingCategory, Severity
@@ -167,6 +169,3 @@ def render_jira_export(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(text, encoding="utf-8")
     return output_path
-
-
-import json
