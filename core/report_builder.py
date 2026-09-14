@@ -9,6 +9,7 @@ from the unified finding model.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +20,29 @@ import json
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from core.models import Finding, FindingCategory, Severity
+
+
+def _default_template_dir() -> Path:
+    """Locate the bundled Jinja2 templates.
+
+    Works both from a source checkout (repo/reports) and inside a PyInstaller
+    bundle, where data files land next to the executable and `__file__` points
+    into a temporary one-file extraction dir.
+    """
+    candidates = []
+    if getattr(sys, "frozen", False):  # PyInstaller (onefile: _MEIPASS2, onedir: exe dir)
+        meipass = getattr(sys, "_MEIPASS2", None) or getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidates.append(Path(meipass) / "reports")
+        candidates.append(Path(sys.executable).resolve().parent / "reports")
+    else:  # source checkout
+        candidates.append(Path(__file__).resolve().parent.parent / "reports")
+    for candidate in candidates:
+        if (candidate / "audit_report.html.jinja").is_file():
+            return candidate
+    # Last resort (unchanged historical behavior) — get_template raises a
+    # clear TemplateNotFound if truly absent.
+    return candidates[-1] if candidates else Path("reports")
 
 
 @dataclass
@@ -33,9 +57,9 @@ class AuditReport:
 class ReportBuilder:
     def __init__(self, template_dir: Path | None = None) -> None:
         if template_dir is None:
-            template_dir = Path(__file__).resolve().parent.parent / "reports"
+            template_dir = _default_template_dir()
         self._env = Environment(
-            loader=FileSystemLoader(template_dir or Path("reports")),
+            loader=FileSystemLoader(str(template_dir)),
             autoescape=select_autoescape(["html", "xml"]),
             trim_blocks=True,
             lstrip_blocks=True,

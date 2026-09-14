@@ -128,6 +128,12 @@ def build_parser() -> argparse.ArgumentParser:
     v = sub.add_parser("validate", help="Validate a run directory (crash recovery + gate check)")
     v.add_argument("run", help="Run output directory containing run_manifest.json")
 
+    b = sub.add_parser(
+        "install-browsers",
+        help="Download Playwright browser engines (chromium by default; needed once per machine)",
+    )
+    b.add_argument("--all", action="store_true", help="Install chromium, firefox, and webkit")
+
     return parser
 
 
@@ -401,6 +407,51 @@ def cmd_validate(run_dir_raw: str) -> int:
     return 1
 
 
+def cmd_install_browsers(all_browsers: bool = False) -> int:
+    """Download Playwright browser engines.
+
+    Needed exactly once per machine before the first `run` against a live
+    target (a plain `discover` of a local folder works without them).
+    """
+    try:
+        from playwright.__main__ import main as playwright_main
+    except ImportError:
+        print("playwright is not installed in this environment", file=sys.stderr)
+        return 2
+    args = ["install"] + (["chromium", "firefox", "webkit"] if all_browsers else ["chromium"])
+    print(f"[install-browsers] downloading: {', '.join(args[1:])} ...")
+    saved_argv = sys.argv
+    saved_exit = sys.exit
+    code = 0
+
+    def _capture_exit(value: object = 0) -> None:
+        nonlocal code
+        code = int(value) if value is not None else 0
+        raise _ExitJump
+
+    class _ExitJump(BaseException):
+        pass
+
+    sys.argv = ["playwright", *args]
+    sys.exit = _capture_exit  # type: ignore[method-assign]
+    try:
+        playwright_main()
+    except _ExitJump:
+        pass
+    except KeyboardInterrupt:
+        code = 130
+    except SystemExit as exc:  # playwright may call sys.exit before we swap it
+        code = int(exc.code) if exc.code else 0
+    finally:
+        sys.argv = saved_argv
+        sys.exit = saved_exit  # type: ignore[method-assign]
+    if code == 0:
+        print("[install-browsers] done.")
+    else:
+        print(f"[install-browsers] failed with exit code {code}", file=sys.stderr)
+    return code
+
+
 def main(argv: list[str] | None = None) -> int:
     # Windows consoles default to cp1252; box-drawing chars in summaries
     # would crash the CLI. Replace unencodable glyphs instead of failing.
@@ -413,6 +464,8 @@ def main(argv: list[str] | None = None) -> int:
                 pass
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "install-browsers":
+        return cmd_install_browsers(all_browsers=args.all)
     try:
         if args.command == "report":
             return cmd_report(args.run)

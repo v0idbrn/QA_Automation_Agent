@@ -76,6 +76,50 @@ python -m venv .venv
 
 Requisitos: Python 3.10+ y Chromium vía Playwright.
 
+## Lanzador gráfico (Windows)
+
+Doble clic en **`QA_Agent.bat`** — se abre un panel de control de escritorio
+con el ciclo completo, sin tocar la terminal:
+
+- elige la acción: **ejecutar** la auditoría completa, **solo plan** o **solo descubrir**
+- elige la carpeta objetivo (o pega una URL), el perfil de seguridad y los límites
+- mira la salida en vivo y **detén** la ejecución cuando quieras
+- un **panel de resultados** muestra los hallazgos por severidad
+  (crítico/alto/medio/bajo/info) más el veredicto del quality gate tras cada
+  ejecución — y al abrir la GUI carga los resultados de la última ejecución
+- abre el informe HTML generado con un clic
+
+Por debajo compone exactamente los mismos comandos de la CLI, así que todas
+las reglas de scope, presupuesto y redacción se aplican igual. ¿Prefieres la
+terminal? La CLI de abajo hace lo mismo.
+
+## Ejecutable .exe independiente (sin Python)
+
+Genera el bundle portable de Windows con:
+
+```bash
+.venv/Scripts/python scripts/build_exe.py
+```
+
+El resultado es **`dist/QA_Agent/`** — una carpeta que puedes comprimir y
+copiar a cualquier parte (los reportes se crean junto al exe):
+
+| Archivo | Qué es |
+| --- | --- |
+| `QA_Agent.exe` | Panel de control gráfico con doble clic (sin consola). También sirve como runner: la GUI lo lanza con un subcomando para ejecutar auditorías. |
+| `qa-agent.exe` | CLI de consola con los mismos comandos que `main.py`. |
+
+La primera auditoría contra un sitio web necesita los navegadores una sola
+vez (auditar carpetas locales funciona sin ellos):
+
+```bash
+qa-agent.exe install-browsers        # chromium (por defecto)
+qa-agent.exe install-browsers --all  # chromium, firefox, webkit
+```
+
+Para regenerar el bundle, edita el código y vuelve a correr el script;
+`dist/` y `build/` están en `.gitignore`.
+
 ## CLI
 
 ```bash

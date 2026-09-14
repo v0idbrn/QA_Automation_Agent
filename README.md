@@ -105,6 +105,51 @@ python -m venv .venv
 .venv\Scripts\playwright install chromium
 ```
 
+## GUI launcher (Windows)
+
+Double-click **`QA_Agent.bat`** — a desktop control center opens with the full
+cycle available without touching a terminal:
+
+- choose the action: **run** a full audit, **plan** only, or **discover** only
+- pick the target folder (or paste a URL), select the safety profile, and set
+  page/request limits
+- watch the live console output and **stop** the run at any moment
+- a **results panel** shows findings by severity (critical/high/medium/low/info)
+  plus the quality-gate verdict after each run — and loads the latest run's
+  results on startup
+- open the generated HTML report with one click
+
+It composes exactly the same CLI commands under the hood, so every scope,
+budget, and redaction rule applies unchanged. Prefer the terminal? The CLI
+below does the same things.
+
+## Standalone .exe (no Python needed)
+
+Build a portable Windows bundle with:
+
+```bash
+.venv/Scripts/python scripts/build_exe.py
+```
+
+The result is **`dist/QA_Agent/`** — a folder you can zip and copy anywhere
+(reports are created next to the exe):
+
+| File | What it is |
+| --- | --- |
+| `QA_Agent.exe` | Double-click GUI control center (no console window). It also doubles as the runner: the GUI launches it with a subcommand to execute audits. |
+| `qa-agent.exe` | Console CLI with the same commands as `main.py`. |
+
+First audit against a live website needs the browser engines once (local
+folder audits work without them):
+
+```bash
+qa-agent.exe install-browsers        # chromium (default)
+qa-agent.exe install-browsers --all  # chromium, firefox, webkit
+```
+
+To rebuild, edit code and re-run the build script; `dist/` and `build/` are
+gitignored.
+
 ## CLI
 
 ```bash
