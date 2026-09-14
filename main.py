@@ -175,7 +175,13 @@ def _load_config(args: argparse.Namespace) -> AgentConfig:
     for k, v in budget_overrides.items():
         if not hasattr(cfg.budget, k):
             raise ValidationError(f"unknown budget key {k!r}")
-        setattr(cfg.budget, k, v)
+        # Numeric fields must stay numeric: a string value here would crash
+        # validate_config with a TypeError instead of a clean CLI error.
+        try:
+            coerced = type(getattr(cfg.budget, k))(v) if getattr(cfg.budget, k) is not None else v
+        except (TypeError, ValueError):
+            raise ValidationError(f"budget key {k!r} expects {type(getattr(cfg.budget, k)).__name__}, got {v!r}")
+        setattr(cfg.budget, k, coerced)
     scope_overrides = _parse_kv_pairs(getattr(args, "scope", None))
     for k, v in scope_overrides.items():
         if k == "origin":
@@ -327,7 +333,7 @@ def cmd_run(cfg: AgentConfig) -> int:
 
 
 def cmd_report(run_dir_raw: str) -> int:
-    from core.atomic_write import atomic_write_json
+    from core.atomic_write import atomic_write_json, atomic_write_text
 
     run_dir = Path(run_dir_raw)
     if not run_dir.exists():
@@ -337,7 +343,11 @@ def cmd_report(run_dir_raw: str) -> int:
     if not report_json.exists():
         print(f"no audit_report.json in {run_dir}", file=sys.stderr)
         return 2
-    payload = json.loads(report_json.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(report_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"audit_report.json is corrupt (run interrupted?): {exc}", file=sys.stderr)
+        return 2
     summary = payload.get("summary", {})
     gate = payload.get("quality_gate", {})
     print(f"Run: {payload.get('run_id', 'unknown')}")
@@ -353,10 +363,10 @@ def cmd_report(run_dir_raw: str) -> int:
 
             findings = [Finding(**f) for f in payload.get("findings", [])]
             builder = ReportBuilder()
-            (run_dir / "audit_report.md").write_text(builder.build(target=payload.get("target", ""), findings=findings), encoding="utf-8")
-            atomic_write_json(run_dir / "audit_report.html", builder.build_html(target=payload.get("target", ""), findings=findings))
+            atomic_write_text(run_dir / "audit_report.md", builder.build(target=payload.get("target", ""), findings=findings))
+            atomic_write_text(run_dir / "audit_report.html", builder.build_html(target=payload.get("target", ""), findings=findings))
             print("Reports re-rendered from JSON.")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — re-render is best-effort; JSON stays authoritative
             print(f"re-render failed: {exc}", file=sys.stderr)
     return 0
 

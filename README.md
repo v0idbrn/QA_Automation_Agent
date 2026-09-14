@@ -1,5 +1,7 @@
 # Autonomous QA Engineer & Bug Reporting Agent (Enterprise Edition)
 
+> 🇬🇧 English (this file) | 🇪🇸 Español ([README.es.md](README.es.md))
+
 Local-first autonomous QA agent that runs a full audit cycle —
 **DISCOVERY → REQUIREMENTS → RISK → PLANNING → TEST GENERATION → EXECUTION →
 EVIDENCE → FAILURE ANALYSIS → RETRY → FINDINGS → QUALITY GATE → REPORT →
@@ -144,6 +146,13 @@ cd samples/demo_site
 cd ../..
 .venv/Scripts/python main.py run samples/demo_site --profile safe \
     --url http://127.0.0.1:8000 --output reports/demo_run
+```
+
+Or run the one-command demo script (starts the server, audits it, and stops
+the server automatically):
+
+```bash
+.venv/Scripts/python scripts/demo.py --port 8000
 ```
 
 Outputs in `reports/demo_run/`: `audit_report.md`, `audit_report.html`,
