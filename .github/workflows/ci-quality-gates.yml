@@ -1,0 +1,56 @@
+name: CI Quality Gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gates-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gates:
+    name: Pytest quality gates (Python 3.11)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install -e . --no-deps
+
+      - name: Install Tk runtime for GUI regression tests
+        run: sudo apt-get update && sudo apt-get install -y python3-tk
+
+      - name: Install Playwright Chromium
+        run: python -m playwright install --with-deps chromium
+
+      - name: Run full quality-gate suite
+        run: python -m pytest -q
+
+      - name: Publish quality metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-metrics
+          path: cv_metrics.json
+          if-no-files-found: warn
+          retention-days: 14

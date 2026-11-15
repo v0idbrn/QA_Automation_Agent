@@ -1,0 +1,10 @@
+{
+  "total_tests": 295,
+  "modules": [
+    "llm_evals",
+    "mcp_validator",
+    "web_auditor",
+    "data_gates"
+  ],
+  "stack": ["Python", "Pytest", "Playwright", "Pydantic", "GitHub Actions"]
+}

@@ -3,6 +3,10 @@ pydantic>=2.0.0
 playwright>=1.40.0
 jinja2>=3.1.0
 
+# AI-SDET quality framework (HTTP contracts + dataset governance)
+httpx>=0.27.0
+pandas>=2.0.0
+
 # HTML parsing (crawler link extraction + discovery form detection)
 beautifulsoup4>=4.12.0
 
