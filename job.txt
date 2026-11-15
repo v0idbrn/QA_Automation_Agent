@@ -1,4 +1,0 @@
-﻿We are looking for an AI-SDET with strong Python and Playwright experience.
-Required: pytest, Playwright, API testing, GraphQL, CI/CD (GitHub Actions),
-LLM evaluation (RAG, groundedness), MCP security, OWASP LLM Top 10.
-Nice to have: FastAPI, Pydantic, visual regression, load testing.
