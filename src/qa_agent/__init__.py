@@ -4,10 +4,27 @@
 
 The modules in this package are intentionally dependency-light: they are
 imported by the pytest suites and can be reused from the autonomous agent
-without pulling cloud SDKs or API keys into the runtime.
+without pulling cloud SDKs or API keys into the runtime. They are also
+exposed as a CLI: ``python -m qa_agent --help``.
 """
 
 from __future__ import annotations
 
-__all__ = ["llm_evals", "mcp_validator", "web_auditor", "data_gates"]
-__version__ = "1.0.0"
+__all__ = [
+    "api_fuzzer",
+    "cli",
+    "crawler",
+    "data_gates",
+    "llm_evals",
+    "mcp_validator",
+    "models",
+    "redaction",
+    "reporter",
+    "security_checkout",
+    "self_healing",
+    "test_generator",
+    "ux_a11y_perf",
+    "visual_regression",
+    "web_auditor",
+]
+__version__ = "1.1.0"

@@ -2,7 +2,7 @@
 
 [![CI Quality Gates](https://github.com/v0idbrn/QA_Automation_Agent/actions/workflows/ci-quality-gates.yml/badge.svg?branch=main)](https://github.com/v0idbrn/QA_Automation_Agent/actions/workflows/ci-quality-gates.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Pytest](https://img.shields.io/badge/tests-295%20passing-3ecf8e)](#suites-de-calidad)
+[![Pytest](https://img.shields.io/badge/tests-726%20passing-3ecf8e)](#suites-de-calidad)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4da3ff)](LICENSE)
 
 Framework *local-first* de ingeniería de calidad que combina gates deterministas
@@ -94,15 +94,18 @@ objetivo ───► discover ───► requisitos ───► riesgo ─�
 
 ## Suites de calidad
 
-`pytest.ini` hace importable `src/` y limita el descubrimiento a `tests/`. El
-nuevo framework aporta **124 tests deterministas**; la suite completa del
-repositorio suma **295 tests en verde**.
+`pytest.ini` hace importable `src/` y limita el descubrimiento a `tests/`. La
+suite completa del repositorio suma **726 tests en verde** en unos 30 segundos,
+offline salvo las auditorías de navegador contra el fixture local.
 
 | Suite | Tests | Cobertura |
 |---|---:|---|
+| `tests/unit/` (8 archivos) | 349 | Contrato `Finding`, redacción, crawler, UX/a11y/vitals, seguridad/checkout, fuzzing, self-healing, visual diff, reporter/CLI |
 | `tests/evals/test_llm_rag.py` | 28 | Adaptadores LLM, groundedness RAG, salida estructurada, regresión de prompts, presupuestos |
+| `tests/evals/test_semantic_evals.py` | 60 | Similitud TF-IDF, precisión/recall de contexto, trazas multi-agente, seguridad, coste |
 | `tests/security/test_mcp_guardrails.py` | 55 | Esquemas de tools, sanitización, traversal, command injection, SSRF, prompt injection |
 | `tests/e2e/test_web_api_audit.py` | 20 | Contratos HTTP, envelopes de error, errores de consola, overflow móvil, transporte ASGI |
+| `tests/e2e/test_workhorse_live.py` | 22 | Crawl, UX, seguridad, fuzzing, generación de tests e informe contra el fixture |
 | `tests/data/test_dataset_quality.py` | 21 | Esquema, nulos, duplicados, PII y drift de etiquetas |
 | Suite legacy del agente (`tests/test_*.py`) | 171 | Descubrimiento, planificación, orquestación, seguridad, informes, packaging |
 
@@ -265,6 +268,29 @@ Códigos de salida: `0` pass/pass-with-warnings · `1` gate fail o interrumpido 
 `2` escalado/necesita humano/error de configuración · `130` interrupción de
 teclado.
 
+### CLI de auditoría Workhorse
+
+La suite de motores de auditoría también se expone desde el paquete instalable,
+sin depender del bucle autónomo:
+
+```bash
+python -m qa_agent audit <url> --out-dir reports/audit     # crawl + UX + seguridad + informe
+python -m qa_agent fuzz-api <url|openapi.json> --endpoint /api/validate --sla-ms 500
+python -m qa_agent gen-tests <url> --out generated_tests --max-pages 3
+python -m qa_agent visual-diff baseline.png current.png --out reports/visual/diff.png
+python -m qa_agent eval-rag dataset.json --min-score 0.6 --min-recall 0.8
+```
+
+Cada comando imprime un resumen JSON y escribe artefactos en `--out-dir`.
+`audit` genera `audit_report.html` (informe ejecutivo autónomo), `bug_report.md`,
+`manifest.json` con SHA-256 y evidencias. Códigos de salida: `0` gate superado ·
+`1` hallazgos bloqueantes · `2` el comando no pudo ejecutarse.
+
+El fixture `tests/fixtures/vulnerable_saas_fixture.py` sirve un SaaS local con
+defectos deliberados (a11y, contraste, overflow móvil, cookie wall, enlaces y
+assets roto, errores de consola, cookies débiles, cabeceras ausentes, secreto
+cliente, 500 con SQL, XSS reflejado, checkout no idempotente y GraphQL abierto).
+
 ### Centro de control de escritorio (Windows)
 
 Haz doble clic en `QA_Agent.bat` (o ejecuta `python gui.py`). La GUI compone los
@@ -304,9 +330,14 @@ refleja la última ejecución en `main`.
 
 ```json
 {
-  "total_tests": 295,
-  "modules": ["llm_evals", "mcp_validator", "web_auditor", "data_gates"],
-  "stack": ["Python", "Pytest", "Playwright", "Pydantic", "GitHub Actions"]
+  "total_tests": 726,
+  "modules": [
+    "llm_evals", "mcp_validator", "web_auditor", "data_gates",
+    "crawler", "ux_a11y_perf", "security_checkout", "api_fuzzer",
+    "self_healing", "test_generator", "visual_regression", "reporter", "cli"
+  ],
+  "cli": ["audit", "fuzz-api", "gen-tests", "visual-diff", "eval-rag"],
+  "stack": ["Python", "Pytest", "Playwright", "Pydantic", "HTTPX", "Pillow", "GitHub Actions"]
 }
 ```
 

@@ -2,7 +2,7 @@
 
 [![CI Quality Gates](https://github.com/v0idbrn/QA_Automation_Agent/actions/workflows/ci-quality-gates.yml/badge.svg?branch=main)](https://github.com/v0idbrn/QA_Automation_Agent/actions/workflows/ci-quality-gates.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Pytest](https://img.shields.io/badge/tests-295%20passing-3ecf8e)](#quality-suites)
+[![Pytest](https://img.shields.io/badge/tests-726%20passing-3ecf8e)](#quality-suites)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4da3ff)](LICENSE)
 
 A local-first quality-engineering framework that combines deterministic
@@ -10,6 +10,12 @@ AI-SDET gates with an autonomous web QA agent. It demonstrates enterprise
 practices for **LLM evaluation, RAG groundedness, MCP tool security, API
 contract testing, Playwright layout auditing, dataset governance, and CI/CD
 quality gates** — without sending target data to a cloud service.
+
+The **Workhorse Edition** adds seven client-facing audit engines (bounded
+crawler, multi-viewport UX/a11y/Web-Vitals profiler, passive security +
+checkout integrity, REST/GraphQL fuzzing with latency SLAs, self-healing
+locators, generated Playwright suites, and Pillow visual regression) plus a
+standalone executive reporter and a single `python -m qa_agent` CLI.
 
 > 🇪🇸 Spanish translation: [README.es.md](README.es.md). The Spanish file may lag
 > behind this document.
@@ -40,10 +46,25 @@ assert on.
 
 ```text
 QA_Automation_Agent
-├── src/qa_agent/                  # Deterministic AI-SDET framework
+├── src/qa_agent/                  # Deterministic AI-SDET framework + Workhorse engines
+│   ├── cli.py / __main__.py       # `python -m qa_agent audit|fuzz-api|gen-tests|
+│   │                              #  visual-diff|eval-rag`
+│   ├── models.py                  # Shared Finding/Severity contract
+│   ├── redaction.py               # Local `[REDACTED]` layer for URLs, texts, headers
+│   ├── crawler.py                 # Bounded same-origin BFS/DFS crawl: links, assets,
+│   │                              # console/page errors, XHR failures, redirect loops
+│   ├── ux_a11y_perf.py            # 360/390/768/1440 viewports, WCAG 2.1 AA,
+│   │                              # tap targets, overlays, TTFB/FCP/LCP/CLS
+│   ├── security_checkout.py       # Passive headers/CSP/HSTS/CORS/cookies/sourcemaps/
+│   │                              # secrets + cart & idempotency integrity
+│   ├── api_fuzzer.py              # REST/OpenAPI boundary fuzzing, GraphQL probes,
+│   │                              # p50/p95/p99 latency vs SLA
+│   ├── self_healing.py            # Weighted DOM-similarity locator recovery
+│   ├── test_generator.py          # Runnable Pytest+Playwright E2E generator
+│   ├── visual_regression.py       # Pillow pixel tolerance, ignore regions, diff PNG
+│   ├── reporter.py                # Standalone HTML + Markdown + SHA-256 manifest
 │   ├── llm_evals.py               # Mock/live LLM adapters, RAG groundedness,
-│   │                              # structured JSON validation, prompt regression,
-│   │                              # latency and token budgets
+│   │                              # semantic + context + agent + safety evals
 │   ├── mcp_validator.py           # MCP tool-call schema + input sanitizer,
 │   │                              # mapped to OWASP LLM Top 10
 │   ├── web_auditor.py             # HTTPX contract checks + Playwright console
@@ -51,10 +72,12 @@ QA_Automation_Agent
 │   └── data_gates.py              # Schema, null, duplicate, PII, and label-drift
 │                                  # gates over pandas DataFrames
 ├── tests/
-│   ├── evals/test_llm_rag.py      # 28 offline LLM/RAG evaluation tests
-│   ├── security/test_mcp_guardrails.py  # 55 MCP/agent security tests
-│   ├── e2e/test_web_api_audit.py  # 20 HTTPX + Playwright E2E tests
-│   ├── data/test_dataset_quality.py  # 21 dataset-governance tests
+│   ├── evals/                     # LLM/RAG + semantic/context/agent/safety evals
+│   ├── security/                  # MCP guardrails
+│   ├── e2e/                       # HTTPX/Playwright audits + Workhorse live suite
+│   ├── data/                      # Dataset-governance gates
+│   ├── unit/                      # Pure offline tests for every Workhorse engine
+│   ├── fixtures/vulnerable_saas_fixture.py  # Seeded-defect local target
 │   └── test_*.py                  # Legacy autonomous-agent regression suite
 ├── core/                          # Autonomous agent engines (reused, not rewritten)
 │   ├── discovery.py               # Read-only project profile
@@ -88,21 +111,37 @@ commit / PR ───► │ LLM+RAG evals → MCP security → API+Playwright �
 target ───► discover ───► requirements ───► risk ───► plan ───► execute
                                                                     │
                 report ◄── quality gate ◄── findings ◄── analyze ◄──┘
+
+Workhorse client audit (one command):
+
+url ──► crawl ──► UX/a11y/vitals ──► passive security ──► findings
+                                                           │
+  audit_report.html ◄── bug_report.md ◄── SHA-256 manifest ◄┘
 ```
 
 ---
 
 ## Quality suites
 
-`pytest.ini` makes `src/` importable and limits discovery to `tests/`. The new
-framework contributes **124 deterministic tests**; the complete repository
-suite is **295 passing tests**.
+`pytest.ini` makes `src/` importable and limits discovery to `tests/`. The
+repository suite is **726 passing tests** in roughly 30 seconds, fully offline
+except for local browser audits against a loopback fixture.
 
 | Suite | Tests | Focus |
 |---|---:|---|
+| `tests/unit/test_models_redaction.py` | 23 | Finding contract, severity ordering, central redaction |
+| `tests/unit/test_crawler_helpers.py` | 40 | URL normalization, same-origin, assets, link/asset extraction, config bounds |
+| `tests/unit/test_ux_a11y_perf.py` | 67 | Colour math, layout defects, WCAG AA, Web Vitals budgets |
+| `tests/unit/test_security_checkout.py` | 63 | Headers, CSP, cookies, CORS, secrets, stacktraces, cart/idempotency |
+| `tests/unit/test_api_fuzzer.py` | 53 | Payload catalog, OpenAPI parsing, classification, GraphQL, latency/SLA |
+| `tests/unit/test_self_healing_generator.py` | 43 | Similarity scoring, selector patches, generated-module correctness |
+| `tests/unit/test_visual_regression.py` | 25 | Pixel tolerance, ignore regions, bbox/shift, diff and side-by-side output |
+| `tests/unit/test_reporter_cli.py` | 35 | HTML/Markdown escaping, manifest hashing, CLI parsing and exit codes |
 | `tests/evals/test_llm_rag.py` | 28 | LLM adapters, RAG groundedness, structured output, prompt regression, budgets |
+| `tests/evals/test_semantic_evals.py` | 60 | TF-IDF similarity, context precision/recall, agent traces, safety, cost |
 | `tests/security/test_mcp_guardrails.py` | 55 | Tool schemas, sanitization, traversal, command injection, SSRF, prompt injection |
 | `tests/e2e/test_web_api_audit.py` | 20 | HTTP contracts, error envelopes, console errors, mobile overflow, ASGI transport |
+| `tests/e2e/test_workhorse_live.py` | 22 | Live crawl/UX/security/fuzz/generator/report run against the fixture |
 | `tests/data/test_dataset_quality.py` | 21 | Schema, nulls, duplicates, PII, label drift |
 | Legacy agent suite (`tests/test_*.py`) | 171 | Discovery, planning, orchestration, safety, reporting, packaging |
 
@@ -121,6 +160,15 @@ suite is **295 passing tests**.
 - `run_conversation()` — multi-turn scripted regression with
   `must_contain` / `must_not_contain` assertions.
 - `assert_within_budget()` — latency and token thresholds.
+- `semantic_similarity()` / `evaluate_semantic_groundedness()` — pure-Python
+  TF-IDF char+word n-gram cosine that catches paraphrased hallucinations and
+  mutated numbers offline.
+- `evaluate_context_precision()` / `evaluate_context_recall()` — retrieval
+  quality against known-relevant chunks.
+- `evaluate_agent_trace()` — multi-agent loop, ping-pong handoff, missing-agent,
+  and redundant tool-call detection.
+- `evaluate_determinism()`, `evaluate_safety()` (PII/toxicity/bias),
+  `evaluate_cost_budget()`, and an optional `evaluate_with_judge()`.
 
 The suite covers grounded answers, hallucinated entities, fabricated numbers,
 partial grounding, fenced JSON, missing/extra fields, invalid ranges, multi-turn
@@ -180,6 +228,72 @@ cannot crash an audit pipeline.
 
 PII values are never copied into the report — only counts by column and
 category. Synthetic frames keep the suite deterministic and safe.
+
+### 5. Bounded crawler
+
+`crawler.py` drives one Chromium session per crawl (BFS or DFS), strictly
+same-origin by default, with page/depth budgets. Per page it records status,
+title, links, assets, interactive elements, console errors, uncaught page
+errors, failed XHR, redirect chains, mixed content, broken links and broken
+assets. Every URL passes through `redaction.redact_url` before it enters the
+report, and a `CrawlReport` is serializable JSON with a severity gate.
+
+### 6. Multi-viewport UX, WCAG 2.1 AA, and Web Vitals
+
+`ux_a11y_perf.py` profiles the four real device widths (**360×800, 390×844,
+768×1024, 1440×900**) and reports:
+
+- horizontal overflow, clipped controls, overlapping interactive elements;
+- touch targets below 44×44 CSS px;
+- fixed/sticky overlays that cover the viewport or intercept clicks;
+- missing `lang`, `alt`, labels, button names, heading skips, invalid ARIA;
+- inline-style contrast below AA (4.5:1, 3:1 for large text);
+- TTFB, FCP, LCP, CLS, DOM node bloat, JS and image payload budgets.
+
+Pure functions (`analyze_layout`, `audit_accessibility`, `analyze_vitals`)
+take captured snapshots, so the whole matrix is unit-testable without a
+browser.
+
+### 7. Passive security and checkout integrity
+
+`security_checkout.py` performs **read-only** checks: CSP quality, HSTS
+max-age, X-Frame-Options/frame-ancestors, nosniff, Referrer-Policy, CORS
+wildcard-with-credentials, cookie `Secure`/`HttpOnly`/`SameSite`, exposed
+source maps, mixed content, stacktrace leakage, and credential-shaped strings
+in served HTML/JS (values are never echoed). The checkout analyzers cover
+negative/zero/fractional quantities, negative/zero prices, float precision,
+currency allow-lists, server-side total recomputation, and idempotency-key
+replay divergence.
+
+### 8. REST/GraphQL fuzzing and latency SLAs
+
+`api_fuzzer.py` derives endpoints from an OpenAPI 3 document or explicit
+paths, then sends a bounded catalog of empty, Unicode, SQL-metacharacter, XSS,
+type-confusion, and oversized payloads. The verdict is behavioural: a clean
+4xx is a pass, a 500 or a reflected payload is a defect. Missing-auth probes
+and GraphQL introspection/depth/alias/error-leak probes are included, and
+every case feeds p50/p95/p99, throughput, and SLA-breach reporting.
+
+### 9. Self-healing locators, generated suites, visual diff, reports
+
+- `self_healing.py` scores candidates against the original signature across
+  test id, role, text, name, placeholder, tag, and parent, then returns a
+  confidence score plus a resilient Playwright patch.
+- `test_generator.py` emits self-contained Pytest+Playwright modules using
+  `get_by_role` / `get_by_test_id` / `get_by_label`, plus title, visibility,
+  390×844 overflow, and API assertions.
+- `visual_regression.py` diffs with Pillow: pixel tolerance, ignore regions,
+  bounding box, structural shift, red-highlight diff PNG, side-by-side sheet.
+- `reporter.py` writes a standalone HTML executive report (inline CSS/JS,
+  severity filters), a Markdown bug report, and a SHA-256 evidence manifest.
+  All free text is HTML-escaped and redacted.
+
+The seeded fixture `tests/fixtures/vulnerable_saas_fixture.py` is a loopback
+`ThreadingHTTPServer` with deliberate defects: missing lang/alt/labels, low
+contrast, mobile overflow, a cookie wall, a broken link and asset, console and
+page errors, weak cookies, absent security headers, a client-side fake key, a
+500 on SQL input, reflected XSS, a non-idempotent checkout, and an open
+GraphQL endpoint.
 
 ---
 
@@ -261,6 +375,37 @@ Common flags: `--profile safe|standard|deep|ci`, `--risk low|medium|high`,
 Exit codes: `0` pass/pass-with-warnings · `1` gate fail or interrupted ·
 `2` escalation/needs-human/config error · `130` keyboard interrupt.
 
+### Workhorse client-audit CLI
+
+A second, self-contained entry point lives in the installable package. It has
+no dependency on the autonomous agent loop and works after
+`pip install -e .` or directly via `python -m qa_agent`.
+
+```bash
+python -m qa_agent audit <url> --out-dir reports/audit    # crawl + UX + security + report
+python -m qa_agent fuzz-api <url|openapi.json> --endpoint /api/validate --sla-ms 500
+python -m qa_agent gen-tests <url> --out generated_tests --max-pages 3
+python -m qa_agent visual-diff baseline.png current.png --out reports/visual/diff.png
+python -m qa_agent eval-rag dataset.json --min-score 0.6 --min-recall 0.8
+```
+
+Each command prints one JSON summary line and writes artifacts under
+`--out-dir`. Exit codes match the agent: `0` gate passed · `1` findings
+breached the gate · `2` the command could not run.
+
+`audit` produces the client deliverables:
+
+```text
+reports/audit/
+├── audit_report.html   # standalone executive report, inline CSS/JS
+├── bug_report.md       # severity-ordered, reproducible findings
+├── manifest.json       # SHA-256 + byte size per artifact
+└── evidence/           # optional screenshots copied in
+```
+
+Useful flags: `--auth-state storage.json`, `--max-pages`, `--max-depth`,
+`--strategy bfs|dfs`, `--no-ux`, `--no-security`, `--ignore x,y,w,h`.
+
 ### Desktop control center (Windows)
 
 Double-click `QA_Agent.bat` (or run `python gui.py`). The GUI composes the same
@@ -299,9 +444,24 @@ the latest run on `main`.
 
 ```json
 {
-  "total_tests": 295,
-  "modules": ["llm_evals", "mcp_validator", "web_auditor", "data_gates"],
-  "stack": ["Python", "Pytest", "Playwright", "Pydantic", "GitHub Actions"]
+  "total_tests": 726,
+  "modules": [
+    "llm_evals",
+    "mcp_validator",
+    "web_auditor",
+    "data_gates",
+    "crawler",
+    "ux_a11y_perf",
+    "security_checkout",
+    "api_fuzzer",
+    "self_healing",
+    "test_generator",
+    "visual_regression",
+    "reporter",
+    "cli"
+  ],
+  "cli": ["audit", "fuzz-api", "gen-tests", "visual-diff", "eval-rag"],
+  "stack": ["Python", "Pytest", "Playwright", "Pydantic", "HTTPX", "Pillow", "GitHub Actions"]
 }
 ```
 
@@ -356,6 +516,7 @@ Only test systems you own or have written permission to assess.
 - Playwright (Chromium) and HTTPX
 - Pydantic v2
 - pandas
+- Pillow (visual regression)
 - Jinja2 reporting
 - GitHub Actions
 - tkinter desktop GUI and PyInstaller bundle (optional)
@@ -372,12 +533,17 @@ Only test systems you own or have written permission to assess.
 
 ## Limitations
 
-- RAG groundedness uses lexical claim support, not a semantic judge; it is a
-  fast regression gate, not a substitute for human review.
+- RAG groundedness combines lexical claim support with a TF-IDF semantic
+  similarity gate; it catches paraphrase and number mutation but is not a
+  substitute for human review.
 - Label drift measures distribution shift, not causal data quality.
-- Accessibility checks are heuristics and do not certify WCAG compliance.
+- Accessibility and layout checks are heuristics and do not certify WCAG
+  compliance.
 - Coverage measures requirement-to-test mapping, not code coverage.
 - The crawl surface is bounded; JavaScript-heavy SPAs may need higher budgets.
+- Self-healing proposes locators with a confidence score; recovered selectors
+  should be reviewed before they are committed back into the suite.
+- Fuzzing payloads are validation probes, not exploit chains.
 - No cloud integrations ship with the project. Live LLM evaluation is opt-in
   and requires environment credentials.
 

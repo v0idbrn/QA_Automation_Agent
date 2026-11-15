@@ -1,10 +1,28 @@
 {
-  "total_tests": 295,
+  "total_tests": 726,
   "modules": [
     "llm_evals",
     "mcp_validator",
     "web_auditor",
-    "data_gates"
+    "data_gates",
+    "crawler",
+    "ux_a11y_perf",
+    "security_checkout",
+    "api_fuzzer",
+    "self_healing",
+    "test_generator",
+    "visual_regression",
+    "reporter",
+    "cli"
   ],
-  "stack": ["Python", "Pytest", "Playwright", "Pydantic", "GitHub Actions"]
+  "cli": ["audit", "fuzz-api", "gen-tests", "visual-diff", "eval-rag"],
+  "suites": {
+    "unit": 349,
+    "evals": 88,
+    "security": 55,
+    "e2e": 42,
+    "data": 21,
+    "legacy_agent": 171
+  },
+  "stack": ["Python", "Pytest", "Playwright", "Pydantic", "HTTPX", "Pillow", "GitHub Actions"]
 }

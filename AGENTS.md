@@ -39,12 +39,24 @@ Mandatory halt / escalate when:
 
 ## Module map
 
-- `src/qa_agent/` — deterministic AI-SDET framework (offline-first, no API keys).
-  - `llm_evals.py` — mock/live OpenAI-compatible adapters, RAG groundedness, Pydantic structured output, multi-turn regressions, latency/token budgets.
+- `src/qa_agent/` — deterministic AI-SDET framework + Workhorse client-audit engines (offline-first, no API keys).
+  - `cli.py` / `__main__.py` — `python -m qa_agent audit|fuzz-api|gen-tests|visual-diff|eval-rag`; each command is also an importable function returning a JSON-serializable summary. Exit 0 pass / 1 gate breach / 2 cannot run.
+  - `models.py` — shared `Finding`/`Severity` contract, `normalize_severity`, `severity_counts`, `sort_findings`.
+  - `redaction.py` — local `[REDACTED]` layer for text, URLs (query params survive), and headers.
+  - `crawler.py` — bounded same-origin BFS/DFS crawl; links, assets, interactives, console/page errors, failed XHR, broken links/assets, redirect loops (from the Playwright redirect chain), mixed content, redacted metadata.
+  - `ux_a11y_perf.py` — 360×800/390×844/768×1024/1440×900 layout analysis, WCAG 2.1 AA heuristics, touch targets, sticky overlays, TTFB/FCP/LCP/CLS/DOM/JS/image budgets; pure snapshot functions + `UXProfiler`.
+  - `security_checkout.py` — passive CSP/HSTS/XFO/XCTO/Referrer/CORS/cookie/sourcemap/stacktrace/secret checks + cart and idempotency integrity.
+  - `api_fuzzer.py` — REST/OpenAPI boundary fuzzing, clean-4xx-vs-500 classification, GraphQL introspection/depth/alias/error-leak probes, p50/p95/p99 + SLA.
+  - `self_healing.py` — weighted DOM-similarity locator recovery with confidence + Playwright selector patch.
+  - `test_generator.py` — `E2ETestGenerator` writes self-contained Pytest+Playwright modules using `get_by_role`/`get_by_test_id`/`get_by_label`. (Named with the `E2E` prefix so pytest does not try to collect it.)
+  - `visual_regression.py` — Pillow pixel tolerance, ignore regions, bbox, structural shift, red-highlight diff PNG, side-by-side sheet.
+  - `reporter.py` — standalone HTML executive report + Markdown bug report + SHA-256 evidence manifest; all text escaped and redacted.
+  - `llm_evals.py` — mock/live OpenAI-compatible adapters, RAG groundedness, Pydantic structured output, multi-turn regressions, latency/token budgets, plus semantic groundedness, context precision/recall, agent-trace evals, determinism, safety, cost budgets, optional judge.
   - `mcp_validator.py` — MCP tool schema + sanitizer mapped to OWASP LLM Top 10 (LLM01/02/05/06).
   - `web_auditor.py` — reusable HTTPX contract checks + Playwright console/page-error and 390×844 overflow auditing.
   - `data_gates.py` — pandas schema, null, duplicate, PII, and label-drift gates with redacted reports.
-- `tests/evals/`, `tests/security/`, `tests/e2e/`, `tests/data/` — 124 deterministic framework tests; full repo suite is 295 tests.
+- `tests/` — full suite is 726 tests (~30s). `tests/unit/` 349 (pure engine tests), `tests/evals/` 88, `tests/security/` 55, `tests/e2e/` 42, `tests/data/` 21, legacy agent suites 171.
+- `tests/fixtures/vulnerable_saas_fixture.py` + `tests/conftest.py` — loopback `ThreadingHTTPServer` with seeded SaaS defects (a11y, contrast, overflow, cookie wall, broken link/asset, console/page errors, weak cookies, missing headers, client secret, 500-on-SQL, reflected XSS, non-idempotent checkout, open GraphQL). Session-scoped `vulnerable_saas` fixture.
 - `.github/workflows/ci-quality-gates.yml` — push/PR full-suite gate on Python 3.11/3.12 + Chromium; uploads `cv_metrics.json` and JUnit evidence.
 - `cv_metrics.json` — machine-readable test count, module names, and stack snapshot.
 - `pyproject.toml` + `src/qa_agent/py.typed` — installable `qa_agent` package (`pip install -e .`).
@@ -88,8 +100,17 @@ python -m venv .venv
 .venv\Scripts\python main.py run samples/demo_site --profile safe --url http://127.0.0.1:8000 --output reports/demo_run
 .venv\Scripts\python main.py validate reports/demo_run
 .venv\Scripts\pytest -vv
-.venv\Scripts\pytest tests/evals tests/security tests/e2e tests/data -q
+.venv\Scripts\pytest tests/unit tests/evals tests/security tests/e2e tests/data -q
+
+# Workhorse client-audit CLI (installable package)
+python -m qa_agent audit http://127.0.0.1:8000 --out-dir reports/audit
+python -m qa_agent fuzz-api http://127.0.0.1:8000 --endpoint /api/validate --sla-ms 500
+python -m qa_agent gen-tests http://127.0.0.1:8000 --out generated_tests
+python -m qa_agent visual-diff baseline.png current.png --out reports/visual/diff.png
+python -m qa_agent eval-rag dataset.json --min-score 0.6
 ```
+
+Workhorse CLI exit codes: 0 gate passed · 1 findings breached the gate · 2 the command could not run. `audit` writes `audit_report.html`, `bug_report.md`, and `manifest.json` (SHA-256) plus copied evidence screenshots.
 
 Demo target: `samples/demo_site` (static site + bounded `server.py` on 127.0.0.1). It carries deliberate findings: broken link, missing alt, heading skips, duplicate IDs, unlabeled input, console errors, configurable 4xx/5xx + slow + malformed JSON endpoints, fragment/self loops, admin path, external link.
 
