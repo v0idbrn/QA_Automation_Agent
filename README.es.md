@@ -287,13 +287,14 @@ Instala los navegadores una vez en el equipo destino con
 ## Gates de CI/CD
 
 `.github/workflows/ci-quality-gates.yml` se ejecuta en cada push y pull request
-a `main` (y de forma manual):
+a `main` (y de forma manual) sobre Python 3.11 y 3.12:
 
-1. checkout y Python 3.11 con caché de pip;
-2. instalación de `requirements.txt` y del paquete editable;
-3. instalación de Chromium con dependencias de sistema vía Playwright;
-4. ejecución de **la suite completa** (`python -m pytest -q`);
-5. publicación de `cv_metrics.json` como artefacto.
+1. checkout y configuración de Python con caché de pip;
+2. instalación de `requirements.txt` y del paquete editable `qa_agent`;
+3. verificación de consistencia con `pip check`;
+4. instalación de Chromium con dependencias de sistema vía Playwright;
+5. ejecución de **la suite completa** con salida JUnit;
+6. publicación de `cv_metrics.json` y del informe JUnit como artefactos.
 
 Un test fallido hace fallar el workflow, por lo que la suite puede usarse
 directamente como check obligatorio en branch protection. El badge superior

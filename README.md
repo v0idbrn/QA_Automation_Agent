@@ -282,13 +282,14 @@ Produces `dist/QA_Agent/` with a windowed `QA_Agent.exe` and a console
 ## CI/CD quality gates
 
 `.github/workflows/ci-quality-gates.yml` runs on every push and pull request to
-`main` (and on manual dispatch):
+`main` (and on manual dispatch) across Python 3.11 and 3.12:
 
-1. checkout and Python 3.11 setup with pip cache;
-2. install `requirements.txt`;
-3. install Playwright Chromium with system dependencies;
-4. run **the complete pytest suite** (`python -m pytest -q`);
-5. upload `cv_metrics.json` as a build artifact.
+1. checkout and Python setup with pip cache;
+2. install `requirements.txt` plus the editable `qa_agent` package;
+3. verify dependency consistency with `pip check`;
+4. install Playwright Chromium with system dependencies;
+5. run **the complete pytest suite** with JUnit output;
+6. upload `cv_metrics.json` and the JUnit report as build artifacts.
 
 A failing test fails the workflow, so the suite can be used directly as a
 required branch-protection check. The badge at the top of this README reflects

@@ -50,6 +50,7 @@ htmlcov/
 test-results/
 playwright-report/
 .playwright/
+pytest-results.xml
 
 # Editor / OS noise
 .DS_Store
