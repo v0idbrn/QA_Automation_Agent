@@ -45,7 +45,7 @@ Mandatory halt / escalate when:
   - `web_auditor.py` — reusable HTTPX contract checks + Playwright console/page-error and 390×844 overflow auditing.
   - `data_gates.py` — pandas schema, null, duplicate, PII, and label-drift gates with redacted reports.
 - `tests/evals/`, `tests/security/`, `tests/e2e/`, `tests/data/` — 124 deterministic framework tests; full repo suite is 295 tests.
-- `.github/workflows/ci-quality-gates.yml` — push/PR full-suite gate on Python 3.11 + Chromium; uploads `cv_metrics.json`.
+- `.github/workflows/ci-quality-gates.yml` — push/PR full-suite gate on Python 3.11/3.12 + Chromium; uploads `cv_metrics.json` and JUnit evidence.
 - `cv_metrics.json` — machine-readable test count, module names, and stack snapshot.
 - `pyproject.toml` + `src/qa_agent/py.typed` — installable `qa_agent` package (`pip install -e .`).
 - `core/models.py` — unified typed models: Project/ProjectProfile, Requirement(+category), Risk(+score), TestCase/Step(+status/fingerprint), TestResult, Finding, Evidence, ExecutionRun/Config, BudgetConfig, ResourceBudget, RetryDecision, Escalation, QualityGateResult, RunManifest, TraceabilityIndex. Backward-compat aliases: `Severity=FindingSeverity`, `ConfidenceLevel=Confidence`, `DiscoveredProject=ProjectProfile`.
