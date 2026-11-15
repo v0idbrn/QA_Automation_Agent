@@ -2,7 +2,7 @@
 
 [![CI Quality Gates](https://github.com/v0idbrn/QA_Automation_Agent/actions/workflows/ci-quality-gates.yml/badge.svg?branch=main)](https://github.com/v0idbrn/QA_Automation_Agent/actions/workflows/ci-quality-gates.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Pytest](https://img.shields.io/badge/tests-726%20passing-3ecf8e)](#suites-de-calidad)
+[![Pytest](https://img.shields.io/badge/tests-824%20passing-3ecf8e)](#suites-de-calidad)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4da3ff)](LICENSE)
 
 Framework *local-first* de ingeniería de calidad que combina gates deterministas
@@ -12,7 +12,17 @@ testing de contratos API, auditoría de layout con Playwright, gobernanza de
 datasets y gates de calidad en CI/CD** — sin enviar datos del objetivo a
 servicios cloud.
 
-> 🇬🇧 English: [README.md](README.md). Este archivo es la versión en español.
+La **Full-Spectrum v2.0** añade doce motores de auditoría orientados a cliente
+(crawler acotado, profiler UX/a11y/Web-Vitals multi-viewport, seguridad
+pasiva + integridad de checkout, fuzzing REST/GraphQL con SLAs de latencia,
+localizadores auto-reparables, suites Playwright generadas, regresión visual
+Pillow, análisis estático de APK, instalabilidad PWA, sondas de contrato CLI,
+integridad RBAC/Workflow, auditoría de constraints SQLite/DDL, pruebas de
+carga acotadas, inventario de tests/RTM/planificación) más un reporter
+ejecutivo autónomo, un único CLI `python -m qa_agent` y un generador ATS de
+CV consciente del workspace (`tools/cv_builder/`).
+
+> 🇬🇧 English: [README.md](README.md).
 
 ---
 
@@ -22,8 +32,8 @@ Dos capas en un mismo repositorio:
 
 1. **Framework determinista AI-SDET** (`src/qa_agent/`)
    Evaluadores y validadores reutilizables que se ejecutan completamente
-   offline. Las cuatro suites de `tests/evals`, `tests/security`, `tests/e2e` y
-   `tests/data` los ejercitan con `pytest` y sin claves de API.
+   offline. Las suites en `tests/evals`, `tests/security`, `tests/e2e`,
+   `tests/data` y `tests/unit` los ejercitan con `pytest` y sin claves de API.
 2. **Agente de QA autónomo** (`core/`, `main.py`, `gui.py`)
    Ciclo de auditoría orientado a empresa: descubrimiento, planificación por
    riesgo, ejecución acotada en navegador, captura de evidencia, análisis de
@@ -40,53 +50,89 @@ resultados estructurados que CI puede verificar.
 
 ```text
 QA_Automation_Agent
-├── src/qa_agent/                  # Framework determinista AI-SDET
-│   ├── llm_evals.py               # Adaptadores mock/live, groundedness RAG,
-│   │                              # validación JSON con Pydantic, regresión de
-│   │                              # prompts, presupuestos de latencia/tokens
-│   ├── mcp_validator.py           # Esquema de tool-calls MCP + sanitizador,
+├── src/qa_agent/                  # Framework determinista AI-SDET + motores Full-Spectrum
+│   ├── cli.py / __main__.py       # `python -m qa_agent audit|fuzz-api|gen-tests|
+│   │                              #  visual-diff|eval-rag|audit-apk|audit-pwa|test-cli|
+│   │                              #  audit-rbac|audit-workflow|audit-db|load-test|gen-test-plan`
+│   ├── models.py                  # Contrato compartido Finding/Severity
+│   ├── redaction.py               # Capa local `[REDACTED]` para URLs, textos, cabeceras
+│   ├── crawler.py                 # Crawl BFS/DFS same-origin acotado: links, assets,
+│   │                              # errores consola/página, fallos XHR, cadenas redirect
+│   ├── ux_a11y_perf.py            # Viewports 360/390/768/1440, WCAG 2.1 AA,
+│   │                              # tap targets, overlays, TTFB/FCP/LCP/CLS
+│   ├── security_checkout.py       # Cabeceras/CSP/HSTS/CORS/cookies/sourcemaps/secretos
+│   │                              # pasivos + integridad de carrito e idempotencia
+│   ├── api_fuzzer.py              # Fuzzing frontera REST/OpenAPI, sondeos GraphQL,
+│   │                              # p50/p95/p99 latencia vs SLA
+│   ├── self_healing.py            # Recuperación de localizadores por similitud DOM ponderada
+│   ├── test_generator.py          # Generador Pytest+Playwright E2E ejecutable
+│   ├── visual_regression.py       # Tolerancia píxel Pillow, regiones ignoradas, diff PNG
+│   ├── reporter.py                # HTML + Markdown + manifiesto SHA-256 autónomos
+│   ├── llm_evals.py               # Adaptadores LLM mock/live, groundedness RAG,
+│   │                              # semántica + contexto + agente + safety
+│   ├── mcp_validator.py           # Esquema tool-call MCP + sanitizador entrada,
 │   │                              # mapeado a OWASP LLM Top 10
-│   ├── web_auditor.py             # Contratos HTTPX + consola y overflow móvil
-│   │                              # con Playwright
-│   └── data_gates.py              # Esquema, nulos, duplicados, PII y drift de
-│                                  # etiquetas sobre DataFrames de pandas
+│   ├── web_auditor.py             # Contratos HTTPX + consola Playwright + overflow móvil
+│   ├── data_gates.py              # Esquema, nulos, duplicados, PII y drift etiquetas
+│   │                              # gates sobre DataFrames pandas
+│   ├── mobile_qa.py               # Análisis estático APK (permisos, componentes
+│   │                              # exportados, debuggable, firmas, SDK) + auditoría
+│   │                              # instalabilidad PWA (manifest, iconos, SW)
+│   ├── desktop_cli_qa.py          # Sondas CLI acotadas (--help/--version/flag-desconocida)
+│   │                              # + auditoría AST estática de escritorio
+│   ├── functional_qa.py           # Auditoría matriz RBAC (sobre-privilegio, gaps) +
+│   │                              # integridad workflow/máquina de estados (dead-ends, inalcanzables)
+│   ├── db_qa.py                   # Parsing DDL (PK/FK/UNIQUE/NOT NULL), detección
+│   │                              # money-type float, auditoría PRAGMA SQLite (huérfanos, integridad)
+│   ├── performance_qa.py          # ThreadPoolExecutor runs acotados, p50/p95/p99
+│   │                              # latencia, gates error-rate/5xx
+│   └── test_management.py         # Descubrimiento AST tests (Python/JS), cobertura RTM,
+│                                  # planes basados en riesgo, salud JUnit XML
+├── tools/cv_builder/              # Generador ATS CV & Propuesta consciente del workspace
+│   ├── workspace_scanner.py       # Descubrimiento sibling-repos, parsing manifiestos, AST tests
+│   ├── presets.py                 # 5 presets de rol + perfil privado (PII desde env/archivo)
+│   ├── jd_tailor.py               # ATS keyword match %, re-rank bullets/proyectos, LLM tailor
+│   ├── renderers.py               # reportlab PDF + python-docx DOCX (one-page/detailed)
+│   └── cli.py                     # `python -m tools.cv_builder --preset all --jd job.txt --ai`
 ├── tests/
-│   ├── evals/test_llm_rag.py      # 28 tests offline de LLM/RAG
-│   ├── security/test_mcp_guardrails.py  # 55 tests de seguridad MCP/agente
-│   ├── e2e/test_web_api_audit.py  # 20 tests HTTPX + Playwright
-│   ├── data/test_dataset_quality.py  # 21 tests de gobernanza de datos
-│   └── test_*.py                  # Suite de regresión del agente autónomo
-├── core/                          # Motores del agente (reutilizados, no reescritos)
-│   ├── discovery.py               # Perfil de proyecto de solo lectura
+│   ├── evals/                     # LLM/RAG + semántico/contexto/agente/safety
+│   ├── security/                  # Guardrails MCP
+│   ├── e2e/                       # Audits HTTPX/Playwright + suite live Workhorse
+│   ├── data/                      # Gates gobernanza datasets
+│   ├── unit/                      # Tests offline puros para cada motor (+ cv_builder)
+│   ├── fixtures/vulnerable_saas_fixture.py  # Objetivo local con defectos sembrados
+│   └── test_*.py                  # Suite regresión agente autónomo legacy
+├── core/                          # Motores agente autónomo (reutilizados, no reescritos)
+│   ├── discovery.py               # Perfil proyecto solo lectura
 │   ├── requirements_engine.py     # Requisitos explícitos / inferidos / desconocidos
-│   ├── risk_engine.py             # Scoring de riesgo en siete ejes
-│   ├── planner.py                 # Requisitos → riesgos → plan → casos de test
-│   ├── orchestrator.py            # Máquina de estados acotada + executor
+│   ├── risk_engine.py             # Scoring riesgo siete ejes
+│   ├── planner.py                 # Requisitos → riesgos → plan → casos test
+│   ├── orchestrator.py            # Máquina estados acotada + executor + decisiones
 │   ├── live_session.py            # Sesiones Playwright acotadas
 │   ├── quality_gate.py            # PASS / WARN / FAIL / BLOCKED / NEEDS_HUMAN
-│   ├── evidence.py                # Evidencia + manifiesto de ejecución
-│   ├── redaction.py               # Capa central de redacción de secretos/PII
-│   └── report_builder.py          # Markdown, HTML, JSON y export Jira
+│   ├── evidence.py                # Entradas evidencia + manifiesto ejecución
+│   ├── redaction.py               # Capa central scrubbing secretos/PII
+│   └── report_builder.py          # Markdown, HTML, JSON, export Jira
 ├── samples/demo_site/             # Objetivo sintético con hallazgos deliberados
-├── scripts/                       # Demo runner y build del exe Windows
+├── scripts/                       # Demo runner y build exe Windows
 ├── .github/workflows/
-│   └── ci-quality-gates.yml       # Gate de push/PR sobre Python 3.11
+│   └── ci-quality-gates.yml       # Gate push/PR Python 3.11/3.12
 ├── cv_metrics.json                # Métricas legibles por máquina
-├── pyproject.toml                 # Paquete qa_agent instalable
-├── pytest.ini                     # Ruta src/ + descubrimiento de tests
+├── pyproject.toml                 # Metadatos paquete qa_agent instalable
+├── pytest.ini                     # Ruta src/ + descubrimiento tests
 ├── main.py                        # CLI: discover | plan | run | report | validate
-└── gui.py                         # Centro de control de escritorio sobre la CLI
+└── gui.py                         # Centro control escritorio sobre la misma CLI
 ```
 
 ### Flujo de ejecución
 
 ```text
-                 ┌───────────────── gates deterministas AI-SDET ───────────────┐
+                  ┌───────────────── gates deterministas AI-SDET ───────────────┐
 commit / PR ───► │ LLM+RAG → seguridad MCP → API+Playwright → datos           │ ───► pytest
-                 └──────────────────────────────────────────────────────────────┘
+                  └──────────────────────────────────────────────────────────────┘
 
 objetivo ───► discover ───► requisitos ───► riesgo ───► plan ───► ejecutar
-                                                                     │
+                                                                      │
                 informe ◄── quality gate ◄── hallazgos ◄── analizar ◄┘
 ```
 
@@ -95,19 +141,28 @@ objetivo ───► discover ───► requisitos ───► riesgo ─�
 ## Suites de calidad
 
 `pytest.ini` hace importable `src/` y limita el descubrimiento a `tests/`. La
-suite completa del repositorio suma **726 tests en verde** en unos 30 segundos,
+suite completa del repositorio suma **824 tests en verde** en unos 60 segundos,
 offline salvo las auditorías de navegador contra el fixture local.
 
 | Suite | Tests | Cobertura |
 |---|---:|---|
-| `tests/unit/` (8 archivos) | 349 | Contrato `Finding`, redacción, crawler, UX/a11y/vitals, seguridad/checkout, fuzzing, self-healing, visual diff, reporter/CLI |
-| `tests/evals/test_llm_rag.py` | 28 | Adaptadores LLM, groundedness RAG, salida estructurada, regresión de prompts, presupuestos |
-| `tests/evals/test_semantic_evals.py` | 60 | Similitud TF-IDF, precisión/recall de contexto, trazas multi-agente, seguridad, coste |
-| `tests/security/test_mcp_guardrails.py` | 55 | Esquemas de tools, sanitización, traversal, command injection, SSRF, prompt injection |
-| `tests/e2e/test_web_api_audit.py` | 20 | Contratos HTTP, envelopes de error, errores de consola, overflow móvil, transporte ASGI |
-| `tests/e2e/test_workhorse_live.py` | 22 | Crawl, UX, seguridad, fuzzing, generación de tests e informe contra el fixture |
-| `tests/data/test_dataset_quality.py` | 21 | Esquema, nulos, duplicados, PII y drift de etiquetas |
-| Suite legacy del agente (`tests/test_*.py`) | 171 | Descubrimiento, planificación, orquestación, seguridad, informes, packaging |
+| `tests/unit/test_models_redaction.py` | 23 | Contrato `Finding`, orden severidad, redacción central |
+| `tests/unit/test_crawler_helpers.py` | 40 | Normalización URL, same-origin, assets, extracción links/assets, límites config |
+| `tests/unit/test_ux_a11y_perf.py` | 67 | Matemática color, defectos layout, WCAG AA, presupuestos Web Vitals |
+| `tests/unit/test_security_checkout.py` | 63 | Cabeceras, CSP, cookies, CORS, secretos, stacktraces, carrito/idempotencia |
+| `tests/unit/test_api_fuzzer.py` | 53 | Catálogo payloads, parsing OpenAPI, clasificación, GraphQL, latencia/SLA |
+| `tests/unit/test_self_healing_generator.py` | 43 | Scoring similitud, parches selectores, corrección módulo generado |
+| `tests/unit/test_visual_regression.py` | 25 | Tolerancia píxel, regiones ignoradas, bbox/shift, output diff y side-by-side |
+| `tests/unit/test_reporter_cli.py` | 35 | Escape HTML/Markdown, hashing manifiesto, parsing CLI y códigos salida |
+| `tests/unit/test_full_spectrum_qa.py` | 53 | Mobile/APK, PWA, CLI/desktop, RBAC, workflow, DB, carga, gestión tests |
+| `tests/unit/test_cv_builder.py` | 45 | Scanner workspace, presets, ATS matching, seguridad PII, mock LLM, PDF/DOCX |
+| `tests/evals/test_llm_rag.py` | 28 | Adaptadores LLM, groundedness RAG, salida estructurada, regresión prompts, presupuestos |
+| `tests/evals/test_semantic_evals.py` | 60 | Similitud TF-IDF, precisión/recall contexto, trazas multi-agente, seguridad, coste |
+| `tests/security/test_mcp_guardrails.py` | 55 | Esquemas tools, sanitización, traversal, command injection, SSRF, prompt injection |
+| `tests/e2e/test_web_api_audit.py` | 20 | Contratos HTTP, envelopes error, errores consola, overflow móvil, transporte ASGI |
+| `tests/e2e/test_workhorse_live.py` | 22 | Crawl/UX/seguridad/fuzz/generación/informe live contra fixture |
+| `tests/data/test_dataset_quality.py` | 21 | Esquema, nulos, duplicados, PII, drift etiquetas |
+| Suite legacy agente (`tests/test_*.py`) | 171 | Descubrimiento, planificación, orquestación, seguridad, informes, packaging |
 
 ### 1. Evaluación de LLM y RAG
 
@@ -268,17 +323,27 @@ Códigos de salida: `0` pass/pass-with-warnings · `1` gate fail o interrumpido 
 `2` escalado/necesita humano/error de configuración · `130` interrupción de
 teclado.
 
-### CLI de auditoría Workhorse
+### CLI de auditoría Workhorse (Full-Spectrum v2.0)
 
 La suite de motores de auditoría también se expone desde el paquete instalable,
 sin depender del bucle autónomo:
 
 ```bash
-python -m qa_agent audit <url> --out-dir reports/audit     # crawl + UX + seguridad + informe
+python -m qa_agent audit <url> --out-dir reports/audit            # crawl + UX + seguridad + informe
 python -m qa_agent fuzz-api <url|openapi.json> --endpoint /api/validate --sla-ms 500
 python -m qa_agent gen-tests <url> --out generated_tests --max-pages 3
 python -m qa_agent visual-diff baseline.png current.png --out reports/visual/diff.png
 python -m qa_agent eval-rag dataset.json --min-score 0.6 --min-recall 0.8
+
+# Añadidos Full-Spectrum v2.0:
+python -m qa_agent audit-apk <path/to/app.apk> --out-dir reports/apk
+python -m qa_agent audit-pwa <build-dir|https://url> --out-dir reports/pwa
+python -m qa_agent test-cli -- python -m mycli --out-dir reports/cli
+python -m qa_agent audit-rbac matrix.json --out-dir reports/rbac
+python -m qa_agent audit-workflow transitions.json --out-dir reports/workflow
+python -m qa_agent audit-db <schema.sql|app.db> --out-dir reports/db
+python -m qa_agent load-test https://api.example.com --requests 50 --concurrency 10 --sla-ms 800
+python -m qa_agent gen-test-plan <repo-root> --requirements reqs.json --junit junit.xml
 ```
 
 Cada comando imprime un resumen JSON y escribe artefactos en `--out-dir`.
@@ -330,14 +395,54 @@ refleja la última ejecución en `main`.
 
 ```json
 {
-  "total_tests": 726,
+  "total_tests": 824,
   "modules": [
-    "llm_evals", "mcp_validator", "web_auditor", "data_gates",
-    "crawler", "ux_a11y_perf", "security_checkout", "api_fuzzer",
-    "self_healing", "test_generator", "visual_regression", "reporter", "cli"
+    "api_fuzzer",
+    "cli",
+    "crawler",
+    "data_gates",
+    "db_qa",
+    "desktop_cli_qa",
+    "functional_qa",
+    "llm_evals",
+    "mcp_validator",
+    "mobile_qa",
+    "performance_qa",
+    "reporter",
+    "security_checkout",
+    "self_healing",
+    "test_generator",
+    "test_management",
+    "ux_a11y_perf",
+    "visual_regression",
+    "web_auditor"
   ],
-  "cli": ["audit", "fuzz-api", "gen-tests", "visual-diff", "eval-rag"],
-  "stack": ["Python", "Pytest", "Playwright", "Pydantic", "HTTPX", "Pillow", "GitHub Actions"]
+  "cli": [
+    "audit",
+    "audit-apk",
+    "audit-db",
+    "audit-pwa",
+    "audit-rbac",
+    "audit-workflow",
+    "eval-rag",
+    "fuzz-api",
+    "gen-test-plan",
+    "gen-tests",
+    "load-test",
+    "test-cli",
+    "visual-diff"
+  ],
+  "stack": [
+    "Python",
+    "Pytest",
+    "Playwright",
+    "Pydantic",
+    "HTTPX",
+    "Pillow",
+    "GitHub Actions",
+    "reportlab",
+    "python-docx"
+  ]
 }
 ```
 
@@ -394,9 +499,11 @@ Prueba únicamente sistemas propios o con permiso escrito.
 - Playwright (Chromium) y HTTPX
 - Pydantic v2
 - pandas
-- Jinja2 para informes
+- Pillow (regresión visual)
+- Jinja2 informes
 - GitHub Actions
 - GUI tkinter y bundle PyInstaller (opcionales)
+- reportlab (rendering PDF) y python-docx (rendering DOCX)
 
 ## Principios de diseño
 

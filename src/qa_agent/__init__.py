@@ -15,16 +15,22 @@ __all__ = [
     "cli",
     "crawler",
     "data_gates",
+    "db_qa",
+    "desktop_cli_qa",
+    "functional_qa",
     "llm_evals",
     "mcp_validator",
+    "mobile_qa",
     "models",
+    "performance_qa",
     "redaction",
     "reporter",
     "security_checkout",
     "self_healing",
     "test_generator",
+    "test_management",
     "ux_a11y_perf",
     "visual_regression",
     "web_auditor",
 ]
-__version__ = "1.1.0"
+__version__ = "2.0.0"

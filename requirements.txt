@@ -17,5 +17,9 @@ pillow>=10.0.0
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
 
+# ATS resume rendering (tools/cv_builder)
+reportlab>=4.0.0
+python-docx>=1.1.0
+
 # Build tool for the standalone exe bundle (scripts/build_exe.py)
 pyinstaller>=6.0.0

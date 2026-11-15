@@ -17,6 +17,12 @@ build/
 .env.*
 !.env.example
 
+# CV builder private profile, generated documents, and local key files
+.cv_private.json
+output_cvs/
+tools/cv_builder/workspace_snapshot.json
+.jarvis_7keys.json
+
 # Local runtime traces and screenshots
 *.log
 trace.zip

@@ -1,28 +1,59 @@
 {
-  "total_tests": 726,
+  "total_tests": 824,
   "modules": [
+    "api_fuzzer",
+    "cli",
+    "crawler",
+    "data_gates",
+    "db_qa",
+    "desktop_cli_qa",
+    "functional_qa",
     "llm_evals",
     "mcp_validator",
-    "web_auditor",
-    "data_gates",
-    "crawler",
-    "ux_a11y_perf",
+    "mobile_qa",
+    "performance_qa",
+    "reporter",
     "security_checkout",
-    "api_fuzzer",
     "self_healing",
     "test_generator",
+    "test_management",
+    "ux_a11y_perf",
     "visual_regression",
-    "reporter",
-    "cli"
+    "web_auditor"
   ],
-  "cli": ["audit", "fuzz-api", "gen-tests", "visual-diff", "eval-rag"],
+  "cli": [
+    "audit",
+    "audit-apk",
+    "audit-db",
+    "audit-pwa",
+    "audit-rbac",
+    "audit-workflow",
+    "eval-rag",
+    "fuzz-api",
+    "gen-test-plan",
+    "gen-tests",
+    "load-test",
+    "test-cli",
+    "visual-diff"
+  ],
   "suites": {
-    "unit": 349,
+    "unit": 437,
     "evals": 88,
     "security": 55,
     "e2e": 42,
     "data": 21,
-    "legacy_agent": 171
+    "legacy_agent": 171,
+    "cv_builder": 45
   },
-  "stack": ["Python", "Pytest", "Playwright", "Pydantic", "HTTPX", "Pillow", "GitHub Actions"]
+  "stack": [
+    "Python",
+    "Pytest",
+    "Playwright",
+    "Pydantic",
+    "HTTPX",
+    "Pillow",
+    "GitHub Actions",
+    "reportlab",
+    "python-docx"
+  ]
 }
