@@ -21,7 +21,7 @@ import subprocess
 import sys
 import threading
 import webbrowser
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import tkinter as tk
 from tkinter import filedialog, font, messagebox, ttk
@@ -112,7 +112,9 @@ def reports_dir_for(output_dir: str | None) -> Path:
     """Resolve where the reports of a run land (same rule as main.py)."""
     if output_dir:
         path = Path(output_dir)
-        return path if path.is_absolute() else ROOT / path
+        # A Windows drive path is absolute for the GUI even when tests run on POSIX.
+        windows_absolute = bool(PureWindowsPath(output_dir).drive) and PureWindowsPath(output_dir).is_absolute()
+        return path if path.is_absolute() or windows_absolute else ROOT / path
     return REPORTS
 
 
