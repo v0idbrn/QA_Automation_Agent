@@ -180,14 +180,105 @@ def load_github_workflows(root: Path) -> list[dict[str, Any]]:
     if not workflows_dir.is_dir():
         return []
     workflows = []
+    # Support both .yml and .yaml extensions
     for wf in workflows_dir.glob("*.yml"):
-        try:
-            import yaml
-
-            workflows.append({"file": wf.name, "content": yaml.safe_load(_read_text(wf))})
-        except Exception:
-            workflows.append({"file": wf.name, "content": {}})
+        workflows.append(_parse_workflow_file(wf))
+    for wf in workflows_dir.glob("*.yaml"):
+        workflows.append(_parse_workflow_file(wf))
     return workflows
+
+
+def _parse_workflow_file(path: Path) -> dict[str, Any]:
+    """Parse a GitHub Actions workflow file with yaml fallback to regex."""
+    text = _read_text(path)
+    if not text:
+        return {"file": path.name, "content": {}}
+
+    # Try PyYAML first
+    try:
+        import yaml
+
+        content = yaml.safe_load(text)
+        if isinstance(content, dict):
+            return {"file": path.name, "content": content}
+    except Exception:
+        pass
+
+    # Regex fallback for matrix extraction
+    # Pattern: strategy:\n      matrix:\n        key: [value1, value2] or key: value
+    matrix: dict[str, list[str]] = {}
+    lines = text.splitlines()
+    in_strategy = False
+    in_matrix = False
+    matrix_indent = 0
+    current_key = None
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip())
+
+        if stripped.startswith("strategy:"):
+            in_strategy = True
+            continue
+        if in_strategy and stripped.startswith("matrix:"):
+            in_matrix = True
+            matrix_indent = indent
+            continue
+        if in_matrix:
+            if indent <= matrix_indent and stripped:
+                # Exited matrix block
+                break
+            # Match key: [value1, value2] or key: value
+            m = re.match(r"^(\s+)(\w+):\s*(.+)$", line)
+            if m:
+                key_indent = len(m.group(1))
+                key = m.group(2)
+                value_str = m.group(3).strip()
+                if key_indent > matrix_indent:
+                    current_key = key
+                    if value_str.startswith("[") and value_str.endswith("]"):
+                        # Inline list: [v1, v2, v3]
+                        items = value_str[1:-1].split(",")
+                        matrix[key] = [item.strip().strip('"\'') for item in items if item.strip()]
+                    elif value_str and not value_str.startswith("#"):
+                        # Single value
+                        matrix[key] = [value_str.strip('"\'')]
+                elif current_key and indent > key_indent:
+                    # Continuation of list item: - value
+                    m2 = re.match(r"^\s*-\s*(.+)$", line)
+                    if m2:
+                        val = m2.group(1).strip().strip('"\'')
+                        if val:
+                            matrix.setdefault(current_key, []).append(val)
+
+    if matrix:
+        # Convert to the expected workflow content structure
+        # We'll return the matrix at top level for _infer_ci_matrix to find
+        content = {"_matrix_fallback": matrix}
+        return {"file": path.name, "content": content}
+
+    return {"file": path.name, "content": {}}
+
+
+def _infer_ci_matrix(workflows: list[dict[str, Any]]) -> list[str]:
+    matrix: set[str] = set()
+    for wf in workflows:
+        content = wf.get("content", {})
+        # Check regex fallback first
+        fallback_matrix = content.get("_matrix_fallback", {})
+        if fallback_matrix:
+            for key, values in fallback_matrix.items():
+                if isinstance(values, list):
+                    matrix.update(f"{key}: {v}" for v in values)
+        # Also check standard parsed structure
+        jobs = content.get("jobs", {})
+        for job in jobs.values():
+            strategy = job.get("strategy", {})
+            matrix_config = strategy.get("matrix", {})
+            for key, values in matrix_config.items():
+                if isinstance(values, list):
+                    matrix.update(f"{key}: {v}" for v in values)
+    return sorted(matrix)
 
 
 def _infer_frameworks(pyproject: dict[str, Any], requirements: list[str], package_json: dict[str, Any]) -> list[str]:
